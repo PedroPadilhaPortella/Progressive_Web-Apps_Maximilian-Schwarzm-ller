@@ -1,5 +1,5 @@
-const CACHE_STATIC = "static/v4";
-const CACHE_DYNAMIC = "dynamic/V2";
+const CACHE_STATIC = "static/v7";
+const CACHE_DYNAMIC = "dynamic/v5";
 
 self.addEventListener("install", function (event) {
   console.log("[Service Worker] Installing Service Worker ...", event);
@@ -9,6 +9,7 @@ self.addEventListener("install", function (event) {
       cache.addAll([
         "/",
         "/index.html",
+        "/offline.html",
         "/src/js/app.js",
         "/src/js/feed.js",
         "/src/js/material.min.js",
@@ -40,21 +41,36 @@ self.addEventListener("activate", function (event) {
   return self.clients.claim();
 });
 
+// Cache with network fallback strategy
+// self.addEventListener("fetch", function (event) {
+//   event.respondWith(
+//     caches.match(event.request).then((response) => {
+//       if (response) {
+//         return response;
+//       } else {
+//         return fetch(event.request)
+//           .then((res) => {
+//             return caches.open(CACHE_DYNAMIC).then((cache) => {
+//               cache.put(event.request.url, res.clone());
+//               return res;
+//             });
+//           })
+//           .catch((err) => {
+//             return caches.open(CACHE_STATIC).then((cache) => {
+//                 return cache.match('/offline.html');
+//             });
+//           });
+//       }
+//     })
+//   );
+// });
+
+// Cache-only strategy
+// self.addEventListener("fetch", function (event) {
+//   event.respondWith(caches.match(event.request));
+// });
+
+// Network-only strategy
 self.addEventListener("fetch", function (event) {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
-      } else {
-        return fetch(event.request)
-          .then((res) => {
-            return caches.open(CACHE_DYNAMIC).then((cache) => {
-              cache.put(event.request.url, res.clone());
-              return res;
-            });
-          })
-          .catch((err) => {});
-      }
-    })
-  );
+  fetch(event.request);
 });
