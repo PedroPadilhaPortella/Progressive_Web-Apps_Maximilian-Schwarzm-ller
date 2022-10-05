@@ -1,5 +1,5 @@
-const CACHE_STATIC = "static/v7";
-const CACHE_DYNAMIC = "dynamic/v5";
+const CACHE_STATIC = "static/v11";
+const CACHE_DYNAMIC = "dynamic/v9";
 
 self.addEventListener("install", function (event) {
   console.log("[Service Worker] Installing Service Worker ...", event);
@@ -41,8 +41,46 @@ self.addEventListener("activate", function (event) {
   return self.clients.claim();
 });
 
+// Cache then network strategy for api, and cache with network fallback strategy for static files
+self.addEventListener("fetch", (event) => {
+  const url = "https://httpbin.org/get";
+
+  if (event.request.url.indexOf(url) > -1) {
+    event.respondWith(
+      caches.open(CACHE_DYNAMIC).then(async (cache) => {
+        const response = await fetch(event.request);
+        cache.put(event.request, response.clone());
+        return response;
+      })
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then((response) => {
+        if (response) {
+          return response;
+        } else {
+          return fetch(event.request)
+            .then((res) => {
+              return caches.open(CACHE_DYNAMIC).then((cache) => {
+                cache.put(event.request.url, res.clone());
+                return res;
+              });
+            })
+            .catch((err) => {
+              return caches.open(CACHE_STATIC).then((cache) => {
+                if(event.request.url.indexOf('/help')) {
+                    return cache.match("/offline.html");
+                }
+              });
+            });
+        }
+      })
+    );
+  }
+});
+
 // Cache with network fallback strategy
-// self.addEventListener("fetch", function (event) {
+// self.addEventListener("fetch", (event) => {
 //   event.respondWith(
 //     caches.match(event.request).then((response) => {
 //       if (response) {
@@ -57,7 +95,7 @@ self.addEventListener("activate", function (event) {
 //           })
 //           .catch((err) => {
 //             return caches.open(CACHE_STATIC).then((cache) => {
-//                 return cache.match('/offline.html');
+//               return cache.match("/offline.html");
 //             });
 //           });
 //       }
@@ -66,11 +104,27 @@ self.addEventListener("activate", function (event) {
 // });
 
 // Cache-only strategy
-// self.addEventListener("fetch", function (event) {
+// self.addEventListener("fetch", (event) => {
 //   event.respondWith(caches.match(event.request));
 // });
 
 // Network-only strategy
-self.addEventListener("fetch", function (event) {
-  fetch(event.request);
-});
+// self.addEventListener("fetch", (event) => {
+//   fetch(event.request);
+// });
+
+// Network with cache fallback strategy
+// self.addEventListener("fetch", (event) => {
+//   event.respondWith(
+//     fetch(event.request)
+//       .then((response) => {
+//         return caches.open(CACHE_DYNAMIC).then((cache) => {
+//           cache.put(event.request.url, response.clone());
+//           return response;
+//         });
+//       })
+//       .catch((err) => {
+//         return caches.match(event.request);
+//       })
+//   );
+// });

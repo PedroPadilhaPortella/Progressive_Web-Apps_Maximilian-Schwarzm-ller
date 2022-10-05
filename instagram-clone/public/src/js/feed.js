@@ -39,6 +39,13 @@ function closeCreatePostModal() {
 //   }
 // }
 
+function clearCards() {
+    while(sharedMomentsArea.hasChildNodes()) {
+        sharedMomentsArea.removeChild(sharedMomentsArea.lastChild);
+    }
+}
+
+
 function createCard() {
   var cardWrapper = document.createElement("div");
   cardWrapper.className = "shared-moment-card mdl-card mdl-shadow--2dp";
@@ -61,10 +68,10 @@ function createCard() {
   cardSupportingText.textContent = "In San Francisco";
   cardSupportingText.style.textAlign = "center";
 
-//   var cardSaveButton = document.createElement("button");
-//   cardSaveButton.textContent = "Save";
-//   cardSaveButton.addEventListener("click", onSaveButtonClicked);
-//   cardSupportingText.appendChild(cardSaveButton);
+  //   var cardSaveButton = document.createElement("button");
+  //   cardSaveButton.textContent = "Save";
+  //   cardSaveButton.addEventListener("click", onSaveButtonClicked);
+  //   cardSupportingText.appendChild(cardSaveButton);
 
   cardWrapper.appendChild(cardSupportingText);
   componentHandler.upgradeElement(cardWrapper);
@@ -75,10 +82,36 @@ shareImageButton.addEventListener("click", openCreatePostModal);
 
 closeCreatePostModalButton.addEventListener("click", closeCreatePostModal);
 
-fetch("https://httpbin.org/get")
+
+const url = "https://httpbin.org/get";
+var networkDataReceived = false;
+
+
+fetch(url)
   .then(function (res) {
     return res.json();
   })
   .then(function (data) {
+    networkDataReceived = true;
+    console.log("From web, ", data);
+    clearCards();
     createCard();
   });
+
+
+if ("caches" in window) {
+  caches
+    .match(url)
+    .then((response) => {
+      if (response) {
+        response.json();
+      }
+    })
+    .then((data) => {
+      console.log("From cache, ", data);
+      if (!networkDataReceived) {
+        clearCards();
+        createCard();
+      }
+    });
+}
