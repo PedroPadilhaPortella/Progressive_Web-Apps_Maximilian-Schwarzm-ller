@@ -1,13 +1,14 @@
 importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
-var CACHE_STATIC_NAME = 'static-v24';
-var CACHE_DYNAMIC_NAME = 'dynamic-v2';
+var CACHE_STATIC_NAME = 'static-v40';
+var CACHE_DYNAMIC_NAME = 'dynamic-v3';
 var STATIC_FILES = [
   '/',
   '/index.html',
   '/offline.html',
   '/src/js/app.js',
+  '/src/js/utility.js',
   '/src/js/feed.js',
   '/src/js/idb.js',
   '/src/js/promise.js',
@@ -189,18 +190,17 @@ self.addEventListener('sync', function(event) {
       readAllData('sync-posts')
         .then(function(data) {
           for (var dt of data) {
+            var postData = new FormData();
+            postData.append('id', dt.id);
+            postData.append('title', dt.title);
+            postData.append('location', dt.location);
+            postData.append('rawLocationLat', dt.rawLocation.lat);
+            postData.append('rawLocationLng', dt.rawLocation.lng);
+            postData.append('file', dt.picture, dt.id + '.png');
+
             fetch('https://us-central1-pwagram-99adf.cloudfunctions.net/storePostData', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify({
-                id: dt.id,
-                title: dt.title,
-                location: dt.location,
-                image: 'https://firebasestorage.googleapis.com/v0/b/pwagram-99adf.appspot.com/o/sf-boat.jpg?alt=media&token=19f4770c-fc8c-4882-92f1-62000ff06f16'
-              })
+              body: postData
             })
               .then(function(res) {
                 console.log('Sent data', res);
@@ -220,3 +220,81 @@ self.addEventListener('sync', function(event) {
     );
   }
 });
+
+self.addEventListener('notificationclick', function(event) {
+  var notification = event.notification;
+  var action = event.action;
+
+  console.log(notification);
+
+  if (action === 'confirm') {
+    console.log('Confirm was chosen');
+    notification.close();
+  } else {
+    console.log(action);
+    event.waitUntil(
+      clients.matchAll()
+        .then(function(clis) {
+          var client = clis.find(function(c) {
+            return c.visibilityState === 'visible';
+          });
+
+          if (client !== undefined) {
+            client.navigate(notification.data.url);
+            client.focus();
+          } else {
+            clients.openWindow(notification.data.url);
+          }
+          notification.close();
+        })
+    );
+  }
+});
+
+self.addEventListener('notificationclose', function(event) {
+  console.log('Notification was closed', event);
+});
+
+self.addEventListener('push', function(event) {
+  console.log('Push Notification received', event);
+
+  var data = {title: 'New!', content: 'Something new happened!', openUrl: '/'};
+
+  if (event.data) {
+    data = JSON.parse(event.data.text());
+  }
+
+  var options = {
+    body: data.content,
+    icon: '/src/images/icons/app-icon-96x96.png',
+    badge: '/src/images/icons/app-icon-96x96.png',
+    data: {
+      url: data.openUrl
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
